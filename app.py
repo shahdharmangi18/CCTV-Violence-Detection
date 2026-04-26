@@ -4,11 +4,11 @@ import base64
 import requests
 import tempfile
 import json
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
-app = Flask(__name__, static_folder="static", static_url_path="")
+app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = tempfile.gettempdir()
@@ -91,9 +91,7 @@ def cluster_detections(detections, gap_secs=3.0):
         })
     return result
 
-@app.route("/")
-def home():
-    return app.send_static_file("index.html")
+
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
