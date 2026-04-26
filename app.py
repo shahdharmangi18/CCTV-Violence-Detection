@@ -191,6 +191,9 @@ def analyze():
             os.remove(video_path)
         return jsonify({"error": str(e)}), 500
 
+@app.route("/")
+def home():
+    return send_from_directory("static", "index.html")
 
 @app.route("/health")
 def health():
