@@ -70,7 +70,7 @@ def cluster_detections(detections, gap_secs=3.0):
         is_violence = any(
             kw in cl.lower()
             for cl in all_classes
-            for kw in ["violence", "fight", "aggress", "assault", "attack"]
+            for kw in ["violence", "fight", "aggress", "assault", "attack", "knife", "gun", "weapon"]
         )
         if is_violence:
           inc_type = "violence"
@@ -127,6 +127,7 @@ def analyze():
         frame_idx = 0
         processed = 0
         errors = 0
+        violence_counter = 0
 
         while True:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
