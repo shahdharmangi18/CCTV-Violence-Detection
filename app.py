@@ -193,7 +193,7 @@ def analyze():
 
 @app.route("/")
 def home():
-    return app.send_static_file("index.html")
+    return send_from_directory("static", "index.html")
 
 @app.route("/health")
 def health():
