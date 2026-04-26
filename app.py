@@ -191,9 +191,11 @@ def analyze():
             os.remove(video_path)
         return jsonify({"error": str(e)}), 500
 
+from flask import render_template
+
 @app.route("/")
 def home():
-    return send_from_directory("static", "index.html")
+    return render_template("index.html")
 
 @app.route("/health")
 def health():

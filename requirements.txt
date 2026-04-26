@@ -1,10 +1,4 @@
-<<<<<<< HEAD
 flask
 flask-cors
 opencv-python
-=======
-flask
-flask-cors
-opencv-python
->>>>>>> ccba8c924079502d03322ab70ff3db5856fd00e9
 requests
