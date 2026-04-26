@@ -191,15 +191,21 @@ def analyze():
             os.remove(video_path)
         return jsonify({"error": str(e)}), 500
 
+<<<<<<< HEAD
 @app.route("/")
 def home():
     return send_from_directory("static", "index.html")
+=======
+>>>>>>> ccba8c924079502d03322ab70ff3db5856fd00e9
 
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "sentinel-backend"})
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> ccba8c924079502d03322ab70ff3db5856fd00e9
 if __name__ == "__main__":
     os.makedirs("static", exist_ok=True)
     app.run(host="0.0.0.0", port=10000)
