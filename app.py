@@ -92,8 +92,8 @@ def cluster_detections(detections, gap_secs=3.0):
     return result
 
 @app.route("/")
-def index():
-    return send_from_directory("static", "index.html")
+def home():
+    return app.send_static_file("index.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
