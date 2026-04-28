@@ -3,6 +3,7 @@ import cv2
 import base64
 import requests
 import tempfile
+import subprocess
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -13,7 +14,6 @@ CORS(app)
 UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {"mp4","avi","mov","mkv","webm"}
 
-# model classes
 VIOLENCE_CLASSES = ["violence"]
 WEAPON_CLASSES = ["weapon"]
 
@@ -40,7 +40,7 @@ def call_roboflow(frame_b64, api_key, model_id):
     model = "/".join(parts[:-1])
 
     url = f"https://detect.roboflow.com/{model}/{version}"
-    params = {"api_key": api_key}
+    params = {"api_key":api_key}
 
     r = requests.post(url, params=params, data=frame_b64)
     r.raise_for_status()
@@ -53,11 +53,6 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/health")
-def health():
-    return jsonify({"status":"ok"})
-
-
 @app.route("/analyze",methods=["POST"])
 def analyze():
 
@@ -68,110 +63,82 @@ def analyze():
     api_key = request.form.get("api_key")
     model_id = request.form.get("model_id")
 
-    frame_interval = float(request.form.get("frame_interval",1))
-    confidence = float(request.form.get("confidence",40)) / 100
+    frame_interval = float(request.form.get("frame_interval",0.5))
+    confidence = float(request.form.get("confidence",20)) / 100
 
     if not allowed_file(video.filename):
         return jsonify({"error":"Unsupported format"}),400
 
     filename = secure_filename(video.filename)
-    path = os.path.join(UPLOAD_FOLDER,filename)
-    video.save(path)
+    video_path = os.path.join(UPLOAD_FOLDER,filename)
+    video.save(video_path)
 
-    cap = cv2.VideoCapture(path)
-    
-    if not cap.isOpened():
-     return jsonify({"error": "Video could not be opened"})
+    frames_folder = os.path.join(UPLOAD_FOLDER,"frames")
+    os.makedirs(frames_folder,exist_ok=True)
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps == 0 or fps is None:
-     fps = 25
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = total_frames / fps
+    # extract frames using ffmpeg
+    subprocess.run([
+        "ffmpeg",
+        "-i", video_path,
+        "-vf", f"fps=1/{frame_interval}",
+        os.path.join(frames_folder,"frame_%04d.jpg")
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    frame_step = max(1, int(fps * frame_interval))
+    frame_files = sorted(os.listdir(frames_folder))
 
-    detections = []
-    frame_index = 0
+    incidents = []
     processed = 0
 
-    while True:
+    for f in frame_files:
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-        ret, frame = cap.read()
+        frame_path = os.path.join(frames_folder,f)
+        frame = cv2.imread(frame_path)
 
-        if not ret:
-            break
+        if frame is None:
+            continue
 
-        timestamp = frame_index / fps
+        processed += 1
 
         try:
 
             frame_b64 = frame_to_base64(frame)
             result = call_roboflow(frame_b64, api_key, model_id)
 
-            preds = result.get("predictions", [])
-
-            # DEBUG PRINT
-            print("Roboflow predictions:", preds)
+            preds = result.get("predictions",[])
 
             for p in preds:
 
-                conf = p.get("confidence",0)
-                cls = p.get("class","").lower()
-
-                if conf < confidence:
+                if p["confidence"] < confidence:
                     continue
 
-                # flexible detection
-                if "violence" in cls or "weapon" in cls:
+                cls = p["class"].lower()
 
-                    detections.append({
-                        "time": round(timestamp,2),
-                        "class": cls,
-                        "confidence": conf,
-                        "thumbnail": frame_to_thumbnail(frame)
-                    })
+                if cls not in ["violence","weapon"]:
+                    continue
 
-        except Exception as e:
-            print("Roboflow error:", e)
+                incidents.append({
+                    "time":processed,
+                    "type":cls,
+                    "max_confidence":p["confidence"],
+                    "all_classes":[cls],
+                    "thumbnail":frame_to_thumbnail(frame)
+                })
 
-        processed += 1
-        frame_index += frame_step
+        except:
+            pass
 
-        if frame_index >= total_frames:
-            break
-
-    cap.release()
-
-    try:
-        os.remove(path)
-    except:
-        pass
-
-    incidents = []
-
-    for d in detections:
-
-        incidents.append({
-            "time": d["time"],
-            "end_time": d["time"],
-            "type": "violence",
-            "max_confidence": d["confidence"],
-            "all_classes": [d["class"]],
-            "thumbnail": d["thumbnail"],
-            "frame_count": 1,
-            "frame_thumbnails": [d["thumbnail"]]
-        })
+    # cleanup
+    os.remove(video_path)
+    for f in frame_files:
+        os.remove(os.path.join(frames_folder,f))
 
     return jsonify({
-        "success": True,
-        "duration": round(duration,2),
-        "frames_processed": processed,
-        "incidents": incidents,
-        "incident_count": len(incidents),
-        "violence_count": sum(1 for i in incidents if "violence" in i["all_classes"][0]),
-        "weapon_count": sum(1 for i in incidents if "weapon" in i["all_classes"][0])
+        "success":True,
+        "frames_processed":processed,
+        "incidents":incidents,
+        "incident_count":len(incidents),
+        "violence_count":sum(1 for i in incidents if "violence" in i["all_classes"]),
+        "weapon_count":sum(1 for i in incidents if "weapon" in i["all_classes"])
     })
 
 
