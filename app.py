@@ -40,7 +40,7 @@ def call_roboflow(frame_b64, api_key, model_id):
     model = "/".join(parts[:-1])
 
     url = f"https://detect.roboflow.com/{model}/{version}"
-    params = {"api_key":api_key}
+    params = {"api_key": api_key}
 
     r = requests.post(url, params=params, data=frame_b64)
     r.raise_for_status()
@@ -53,7 +53,12 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/analyze",methods=["POST"])
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.route("/analyze", methods=["POST"])
 def analyze():
 
     if "video" not in request.files:
@@ -73,25 +78,25 @@ def analyze():
     video_path = os.path.join(UPLOAD_FOLDER,filename)
     video.save(video_path)
 
-    frames_folder = os.path.join(UPLOAD_FOLDER,"frames")
-    os.makedirs(frames_folder,exist_ok=True)
+    frames_dir = os.path.join(UPLOAD_FOLDER,"frames")
+    os.makedirs(frames_dir, exist_ok=True)
 
-    # extract frames using ffmpeg
+    # Extract frames using ffmpeg
     subprocess.run([
         "ffmpeg",
         "-i", video_path,
         "-vf", f"fps=1/{frame_interval}",
-        os.path.join(frames_folder,"frame_%04d.jpg")
+        os.path.join(frames_dir,"frame_%04d.jpg")
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    frame_files = sorted(os.listdir(frames_folder))
+    frame_files = sorted(os.listdir(frames_dir))
 
     incidents = []
     processed = 0
 
     for f in frame_files:
 
-        frame_path = os.path.join(frames_folder,f)
+        frame_path = os.path.join(frames_dir,f)
         frame = cv2.imread(frame_path)
 
         if frame is None:
@@ -113,35 +118,42 @@ def analyze():
 
                 cls = p["class"].lower()
 
-                if cls not in ["violence","weapon"]:
+                if cls not in VIOLENCE_CLASSES and cls not in WEAPON_CLASSES:
                     continue
 
                 incidents.append({
-                    "time":processed,
-                    "type":cls,
-                    "max_confidence":p["confidence"],
+                    "time": processed,
+                    "type": cls,
+                    "max_confidence": p["confidence"],
                     "all_classes":[cls],
-                    "thumbnail":frame_to_thumbnail(frame)
+                    "thumbnail": frame_to_thumbnail(frame)
                 })
 
+        except Exception as e:
+            print("Detection error:",e)
+
+    # cleanup
+    try:
+        os.remove(video_path)
+    except:
+        pass
+
+    for f in frame_files:
+        try:
+            os.remove(os.path.join(frames_dir,f))
         except:
             pass
 
-    # cleanup
-    os.remove(video_path)
-    for f in frame_files:
-        os.remove(os.path.join(frames_folder,f))
-
     return jsonify({
-        "success":True,
-        "frames_processed":processed,
-        "incidents":incidents,
-        "incident_count":len(incidents),
-        "violence_count":sum(1 for i in incidents if "violence" in i["all_classes"]),
-        "weapon_count":sum(1 for i in incidents if "weapon" in i["all_classes"])
+        "success": True,
+        "frames_processed": processed,
+        "incidents": incidents,
+        "incident_count": len(incidents),
+        "violence_count": sum(1 for i in incidents if "violence" in i["all_classes"]),
+        "weapon_count": sum(1 for i in incidents if "weapon" in i["all_classes"])
     })
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0",port=port)
+    app.run(host="0.0.0.0", port=port)
