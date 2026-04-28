@@ -209,22 +209,16 @@ def analyze():
 
                 labels = [p["class"].lower() for p in preds]
 
-                if any(
-                        l in ["violence", "fight", "attack", "weapon", "knife", "gun"]
-                        for l in labels):
-                    violence_counter += 1
-                else:
-                    violence_counter = 0
+                # detect violence or weapon immediately
+                if any(l in ["violence","fight","attack","weapon","knife","gun"] for l in labels):
+  
+                 thumb = frame_to_thumbnail(frame)
 
-                if violence_counter >= 3:
-
-                    thumb = frame_to_thumbnail(frame)
-
-                    detections.append({
-                        "time": round(timestamp, 2),
-                        "predictions": preds,
-                        "thumbnail": thumb
-                    })
+                 detections.append({
+                 "time": round(timestamp, 2),
+                 "predictions": preds,
+                  "thumbnail": thumb
+                 })
 
             except Exception:
                 errors += 1
