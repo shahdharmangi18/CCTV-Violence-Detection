@@ -661,7 +661,31 @@ async function startAnalysis() {
   }, 400);
 
   try {
-    const res = await fetch('/analyze', { method: 'POST', body: formData });
+    let res = null;
+
+for (let i = 0; i < 3; i++) {
+  try {
+    res = await fetch('/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (res && res.ok) break;
+
+  } catch (err) {
+    console.log("Retrying backend...");
+  }
+
+  await new Promise(r => setTimeout(r, 3000));
+}
+
+if (!res) {
+  showError("Server is starting. Please wait a few seconds and try again.");
+  return;
+}
+
+clearInterval(fakeTimer);
+const data = await res.json();
     clearInterval(fakeTimer);
     const data = await res.json();
 
@@ -714,7 +738,7 @@ async function startAnalysis() {
 
   } catch(e) {
     clearInterval(fakeTimer);
-    showError('Could not reach the backend server. Make sure app.py is running on port 5000.');
+    showError('Server is waking up... please wait 10 seconds and click Analyze again.');
     $('progressSection').style.display = 'none';
   }
 
