@@ -39,13 +39,17 @@ def call_roboflow(frame_b64, api_key, model_id):
     version = parts[-1]
     model = "/".join(parts[:-1])
 
-    url = f"https://detect.roboflow.com/{model}/{version}"
-    params = {"api_key": api_key}
+    url = f"https://detect.roboflow.com/{model}/{version}?api_key={api_key}"
 
-    r = requests.post(url, params=params, data=frame_b64)
-    r.raise_for_status()
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
 
-    return r.json()
+    response = requests.post(url, data=frame_b64, headers=headers)
+
+    print("Roboflow RAW response:", response.text)  # DEBUG
+
+    return response.json()
 
 
 @app.route("/")
@@ -116,19 +120,20 @@ def analyze():
             print(result)
             for p in preds:
 
-             cls = p.get("class","").lower()
-             conf = p.get("confidence",0)
+              cls = p.get("class","").lower()
+              conf = p.get("confidence",0)
 
-            if "violence" in cls or "weapon" in cls:
+              print("Detected:", cls, conf)   # DEBUG
+
+              if "violence" in cls or "weapon" in cls:
 
                  incidents.append({
-                    "time": processed,
-                    "type": cls,
-                    "max_confidence": p["confidence"],
-                    "all_classes":[cls],
-                    "thumbnail": frame_to_thumbnail(frame)
-                })
-
+                  "time": round(timestamp,2),
+                   "type": cls,
+                    "max_confidence": conf,
+                   "all_classes":[cls],
+                  "thumbnail": frame_to_thumbnail(frame)
+                 })
         except Exception as e:
             print("Detection error:",e)
 
