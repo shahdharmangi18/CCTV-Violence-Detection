@@ -13,9 +13,10 @@ CORS(app)
 UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {"mp4","avi","mov","mkv","webm"}
 
-# YOUR MODEL CLASSES
+# MODEL CLASSES
 VIOLENCE_CLASSES = ["violence"]
 WEAPON_CLASSES = ["weapon"]
+
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".",1)[1].lower() in ALLOWED_EXTENSIONS
@@ -39,7 +40,7 @@ def call_roboflow(frame_b64, api_key, model_id):
     model = "/".join(parts[:-1])
 
     url = f"https://detect.roboflow.com/{model}/{version}"
-    params = {"api_key":api_key}
+    params = {"api_key": api_key}
 
     r = requests.post(url, params=params, data=frame_b64)
     r.raise_for_status()
@@ -57,7 +58,7 @@ def health():
     return jsonify({"status":"ok"})
 
 
-@app.route("/analyze",methods=["POST"])
+@app.route("/analyze", methods=["POST"])
 def analyze():
 
     if "video" not in request.files:
@@ -68,14 +69,13 @@ def analyze():
     model_id = request.form.get("model_id")
 
     frame_interval = float(request.form.get("frame_interval",1))
-    confidence = float(request.form.get("confidence",50)) / 100
-    cluster_gap = float(request.form.get("cluster_gap",3))
+    confidence = float(request.form.get("confidence",40)) / 100
 
     if not allowed_file(video.filename):
         return jsonify({"error":"Unsupported format"}),400
 
     filename = secure_filename(video.filename)
-    path = os.path.join(UPLOAD_FOLDER,filename)
+    path = os.path.join(UPLOAD_FOLDER, filename)
     video.save(path)
 
     cap = cv2.VideoCapture(path)
@@ -105,27 +105,28 @@ def analyze():
             frame_b64 = frame_to_base64(frame)
             result = call_roboflow(frame_b64, api_key, model_id)
 
-            preds = result.get("predictions",[])
+            preds = result.get("predictions", [])
 
             for p in preds:
 
-                if p["confidence"] < confidence:
+                conf = p.get("confidence",0)
+                if conf < confidence:
                     continue
 
-                cls = p["class"].lower()
+                cls = p.get("class","").lower()
 
-                if cls not in ["violence","weapon"]:
-                    continue
+                # FLEXIBLE DETECTION
+                if ("violence" in cls) or ("weapon" in cls):
 
-                detections.append({
-                    "time":round(timestamp,2),
-                    "class":cls,
-                    "confidence":p["confidence"],
-                    "thumbnail":frame_to_thumbnail(frame)
-                })
+                    detections.append({
+                        "time": round(timestamp,2),
+                        "class": cls,
+                        "confidence": conf,
+                        "thumbnail": frame_to_thumbnail(frame)
+                    })
 
-        except:
-            pass
+        except Exception as e:
+            print("Roboflow error:", e)
 
         processed += 1
         frame_index += frame_step
@@ -134,34 +135,38 @@ def analyze():
             break
 
     cap.release()
-    os.remove(path)
+
+    try:
+        os.remove(path)
+    except:
+        pass
 
     incidents = []
 
     for d in detections:
 
         incidents.append({
-            "time":d["time"],
-            "end_time":d["time"],
-            "type":"violence",
-            "max_confidence":d["confidence"],
-            "all_classes":[d["class"]],
-            "thumbnail":d["thumbnail"],
-            "frame_count":1,
-            "frame_thumbnails":[d["thumbnail"]]
+            "time": d["time"],
+            "end_time": d["time"],
+            "type": "violence",
+            "max_confidence": d["confidence"],
+            "all_classes": [d["class"]],
+            "thumbnail": d["thumbnail"],
+            "frame_count": 1,
+            "frame_thumbnails": [d["thumbnail"]]
         })
 
     return jsonify({
-        "success":True,
-        "duration":round(duration,2),
-        "frames_processed":processed,
-        "incidents":incidents,
-        "incident_count":len(incidents),
-        "violence_count":len(incidents),
-        "weapon_count":sum(1 for i in incidents if "weapon" in i["all_classes"])
+        "success": True,
+        "duration": round(duration,2),
+        "frames_processed": processed,
+        "incidents": incidents,
+        "incident_count": len(incidents),
+        "violence_count": sum(1 for i in incidents if "violence" in i["all_classes"][0]),
+        "weapon_count": sum(1 for i in incidents if "weapon" in i["all_classes"][0])
     })
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0",port=port)
+    app.run(host="0.0.0.0", port=port)
