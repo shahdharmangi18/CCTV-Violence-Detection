@@ -13,7 +13,7 @@ CORS(app)
 UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {"mp4","avi","mov","mkv","webm"}
 
-# MODEL CLASSES
+# model classes
 VIOLENCE_CLASSES = ["violence"]
 WEAPON_CLASSES = ["weapon"]
 
@@ -58,7 +58,7 @@ def health():
     return jsonify({"status":"ok"})
 
 
-@app.route("/analyze", methods=["POST"])
+@app.route("/analyze",methods=["POST"])
 def analyze():
 
     if "video" not in request.files:
@@ -75,7 +75,7 @@ def analyze():
         return jsonify({"error":"Unsupported format"}),400
 
     filename = secure_filename(video.filename)
-    path = os.path.join(UPLOAD_FOLDER, filename)
+    path = os.path.join(UPLOAD_FOLDER,filename)
     video.save(path)
 
     cap = cv2.VideoCapture(path)
@@ -107,16 +107,19 @@ def analyze():
 
             preds = result.get("predictions", [])
 
+            # DEBUG PRINT
+            print("Roboflow predictions:", preds)
+
             for p in preds:
 
                 conf = p.get("confidence",0)
+                cls = p.get("class","").lower()
+
                 if conf < confidence:
                     continue
 
-                cls = p.get("class","").lower()
-
-                # FLEXIBLE DETECTION
-                if ("violence" in cls) or ("weapon" in cls):
+                # flexible detection
+                if "violence" in cls or "weapon" in cls:
 
                     detections.append({
                         "time": round(timestamp,2),
@@ -169,4 +172,4 @@ def analyze():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT",10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0",port=port)
