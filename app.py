@@ -19,8 +19,9 @@ ALLOWED_EXTENSIONS = {"mp4", "avi", "mov", "mkv", "webm"}
 # then edit these lists to match. Case-insensitive matching is used.
 # ─────────────────────────────────────────────────────────────────
 VIOLENCE_CLASSES = [
-    "violence", "violent", "fight", "fighting",
-    "attack", "attacking", "aggression", "aggressive",
+    "violence",
+    "fight",
+    "attack"
 ]
 
 WEAPON_CLASSES = [
@@ -186,7 +187,7 @@ def analyze():
                 preds = result.get("predictions", [])
 
                 # FIX 1: Filter predictions below confidence threshold
-                conf_threshold = confidence / 100.0
+                conf_threshold = max(confidence / 100.0, 0.55)
                 preds = [p for p in preds if p.get("confidence", 0) >= conf_threshold]
 
                 # FIX 2: Only keep predictions whose class is in our alert list
