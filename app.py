@@ -110,6 +110,8 @@ def analyze():
             result = call_roboflow(frame_b64, api_key, model_id)
 
             preds = result.get("predictions",[])
+            print("Roboflow result:", result)
+            print("Predictions:", preds)
 
             print(result)
             for p in preds:
