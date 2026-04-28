@@ -703,7 +703,7 @@ async function startAnalysis() {
       $('timeline').style.display = 'flex';
       renderTimeline();
       $('resultsCount').textContent = `${allIncidents.length} incident${allIncidents.length !== 1 ? 's' : ''} detected`;
-      $('resultsSub').textContent = `${data.violence_count} violence · ${data.harassment_count} harassment`;
+      $('resultsSub').textContent = `${data.violence_count} violence · ${data.weapon_count} weapons`;
     } else {
       $('emptyState').style.display = 'flex';
       $('emptyState').querySelector('.empty-title').textContent = 'No incidents detected';
