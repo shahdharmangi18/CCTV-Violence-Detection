@@ -34,7 +34,7 @@ def frame_to_thumbnail(frame):
 
 
 def call_roboflow(frame_b64, api_key, model_id):
-
+    print("Calling Roboflow API...")
     parts = model_id.split("/")
     version = parts[-1]
     model = "/".join(parts[:-1])
