@@ -21,9 +21,9 @@ ALLOWED_EXTENSIONS = {"mp4", "avi", "mov", "mkv", "webm"}
 VIOLENCE_CLASSES = [
     "violence",
     "fight",
-    "attack"
+    "attack",
+    "weapon"
 ]
-
 WEAPON_CLASSES = [
     "weapon", "gun", "knife", "pistol",
     "rifle", "sword", "blade",
@@ -190,7 +190,7 @@ def analyze():
                 preds = result.get("predictions", [])
 
                 # FIX 1: Filter predictions below confidence threshold
-                conf_threshold = max(confidence / 100.0, 0.55)
+                conf_threshold = max(confidence / 100.0, 0.35)
                 preds = [p for p in preds if p.get("confidence", 0) >= conf_threshold]
 
                 # FIX 2: Only keep predictions whose class is in our alert list
