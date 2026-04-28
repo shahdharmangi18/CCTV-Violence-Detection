@@ -114,13 +114,8 @@ def analyze():
             print(result)
             for p in preds:
 
-             cls = p["class"].lower()
-
-              # accept lower confidence detections
-             if p["confidence"] < 0.08:
-              continue
-
-            cls = p["class"].lower()
+             cls = p.get("class","").lower()
+             conf = p.get("confidence",0)
 
             if "violence" in cls or "weapon" in cls:
 
