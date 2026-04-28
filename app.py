@@ -73,12 +73,15 @@ def is_alert_class(class_name: str) -> bool:
 
 
 def classify_incident_type(all_classes):
+
     for cl in all_classes:
-        if cl.strip().lower() in set(WEAPON_CLASSES):
-            return "weapon"
+        if cl.lower() in WEAPON_CLASSES:
+            return "violence"   # treat weapon as violence
+
     for cl in all_classes:
-        if cl.strip().lower() in set(VIOLENCE_CLASSES):
+        if cl.lower() in VIOLENCE_CLASSES:
             return "violence"
+
     return None
 
 
