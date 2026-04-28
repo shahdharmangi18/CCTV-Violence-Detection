@@ -79,12 +79,17 @@ def analyze():
     video.save(path)
 
     cap = cv2.VideoCapture(path)
+    
+    if not cap.isOpened():
+     return jsonify({"error": "Video could not be opened"})
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps == 0 or fps is None:
+     fps = 25
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     duration = total_frames / fps
 
-    frame_step = int(fps * frame_interval)
+    frame_step = max(1, int(fps * frame_interval))
 
     detections = []
     frame_index = 0
