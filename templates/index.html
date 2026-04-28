@@ -53,6 +53,18 @@ border-radius:10px;
 margin-top:10px;
 }
 
+.dropzone{
+border:2px dashed #444;
+padding:40px;
+margin-top:15px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.dropzone:hover{
+border-color:#ff4d4d;
+}
+
 .result{
 background:#1a2337;
 padding:15px;
@@ -91,9 +103,9 @@ border-radius:6px;
 
 <h3>Configuration</h3>
 
-<input id="apiKey" placeholder="Roboflow API Key">
+<input id="apiKey" placeholder="4qFODZroJozJG7IYmz19">
 
-<input id="modelId" value="cctv-violence-detection/2">
+<input id="modelId" value="cctv-violence-detection/3">
 
 <br>
 
@@ -114,7 +126,11 @@ border-radius:6px;
 
 <h3>Upload CCTV Footage</h3>
 
-<input type="file" id="videoInput">
+<div class="dropzone" id="dropzone">
+Click or Drop CCTV Video Here
+</div>
+
+<input type="file" id="videoInput" accept="video/*" hidden>
 
 <br>
 
@@ -148,11 +164,37 @@ const $ = id => document.getElementById(id)
 
 const videoInput = $("videoInput")
 const preview = $("preview")
+const dropzone = $("dropzone")
 
+// CLICK upload
+dropzone.onclick = () => videoInput.click()
+
+// FILE SELECT
 videoInput.onchange = e=>{
 const file = e.target.files[0]
 preview.src = URL.createObjectURL(file)
 }
+
+// DRAG DROP
+dropzone.addEventListener("dragover",(e)=>{
+e.preventDefault()
+dropzone.style.borderColor="#ff4d4d"
+})
+
+dropzone.addEventListener("dragleave",()=>{
+dropzone.style.borderColor="#444"
+})
+
+dropzone.addEventListener("drop",(e)=>{
+e.preventDefault()
+
+const file = e.dataTransfer.files[0]
+
+videoInput.files = e.dataTransfer.files
+preview.src = URL.createObjectURL(file)
+
+dropzone.style.borderColor="#444"
+})
 
 
 
@@ -174,7 +216,7 @@ formData.append("frame_interval",$("frameInterval").value)
 formData.append("confidence",$("confidence").value)
 formData.append("cluster_gap",$("clusterGap").value)
 
-$("stats").innerHTML="Analyzing video..."
+$("stats").innerHTML="⏳ Analyzing video... please wait."
 
 try{
 
@@ -190,7 +232,7 @@ renderResults(data)
 }
 catch(e){
 
-$("stats").innerHTML="Backend not reachable. Wait 10 seconds and retry."
+$("stats").innerHTML="⚠ Backend not reachable. Wait 10 seconds and try again."
 
 }
 
