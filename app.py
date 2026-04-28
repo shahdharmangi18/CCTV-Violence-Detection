@@ -69,7 +69,7 @@ def analyze():
     model_id = request.form.get("model_id")
 
     frame_interval = float(request.form.get("frame_interval",0.5))
-    confidence = float(request.form.get("confidence",20)) / 100
+    confidence = float(request.form.get("confidence",10)) / 100
 
     if not allowed_file(video.filename):
         return jsonify({"error":"Unsupported format"}),400
@@ -118,10 +118,9 @@ def analyze():
 
                 cls = p["class"].lower()
 
-                if cls not in VIOLENCE_CLASSES and cls not in WEAPON_CLASSES:
-                    continue
+                if "violence" in cls or "weapon" in cls:
 
-                incidents.append({
+                 incidents.append({
                     "time": processed,
                     "type": cls,
                     "max_confidence": p["confidence"],
